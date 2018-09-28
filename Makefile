@@ -13,9 +13,13 @@ DEV_PROJECT := $(REL_PROJECT)dev
 .PHONY: test build release clean
 
 test:
-	docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) build
-	docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) up agent
-	docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) up test
+	${INFO} "Pulling latest images..."
+	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) build
+	${INFO} "Ensuring database is ready..."
+	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) up agent
+	${INFO} "Running tests..."
+	@ docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) up test
+	@ docker cp $$(docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) ps -q test):/reports/. reports
 
 build:
 	${INFO} "Building application artifacts..."
@@ -24,12 +28,16 @@ build:
 	@ docker cp $$(docker-compose -p $(DEV_PROJECT) -f $(DEV_COMPOSE_FILE) ps -q builder):/wheelhouse/. target
 
 release:
-	docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) build
-	docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) up agent
+	${INFO} "Building images..."
+	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) build
+	${INFO} "Ensuring database is ready..."
+	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) up agent
 	docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) run --rm app manage.py collectstatic --noinput
 	docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) run --rm app manage.py migrate --noinput
 	${INFO} "Running acceptance tests..."
 	@ docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) up test
+	@ docker cp $$(docker-compose -p $(REL_PROJECT) -f $(REL_COMPOSE_FILE) ps -q test):/reports/. reports
+	${INFO} "Acceptance testing complete"
 
 clean:
 	${INFO} "Destroying development environment..."

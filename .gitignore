@@ -94,3 +94,7 @@ node_modules/
 venv/
 bower_components/
 package-lock.json
+
+
+# Test
+reports
